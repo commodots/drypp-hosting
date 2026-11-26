@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
 use App\Http\Controllers\Admin\CampaignController as AdminCampaignController;
 use App\Http\Controllers\Admin\PackageController as AdminPackageController;
 use App\Http\Controllers\Admin\HostingAdminController;
+use App\Http\Controllers\Admin\OperationsController;
 use App\Http\Controllers\Admin\PorkbunDiagnosticController;
 use App\Http\Controllers\Admin\SmtpController;
 use App\Http\Controllers\Admin\PaymentController;
@@ -41,9 +42,22 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/payments/override/{user}', [PaymentController::class, 'override'])->name('payments.override');
     Route::get('/hosting', [HostingAdminController::class, 'index'])->name('hosting.index');
+    Route::get('/hosting/packages', [HostingAdminController::class, 'packages'])->name('hosting.packages');
+    Route::get('/hosting/servers', [HostingAdminController::class, 'servers'])->name('hosting.servers');
+    Route::get('/hosting/accounts', [OperationsController::class, 'hostingAccounts'])->name('hosting.accounts');
+    Route::get('/provisioning', [OperationsController::class, 'provisioningQueue'])->name('provisioning.index');
+    Route::post('/provisioning/{account}/retry', [HostingAdminController::class, 'retryProvisioning'])
+        ->middleware('throttle:10,1')
+        ->name('provisioning.retry');
+    Route::get('/domain-pricing', [HostingAdminController::class, 'domainPricing'])->name('domain-pricing.index');
+    Route::get('/domains', [OperationsController::class, 'domains'])->name('domains.index');
+    Route::get('/customers', [OperationsController::class, 'customers'])->name('customers.index');
+    Route::get('/support-renewals', [OperationsController::class, 'supportAndRenewals'])->name('support-renewals.index');
     Route::post('/hosting/servers', [HostingAdminController::class, 'storeServer'])->name('hosting.servers.store');
+    Route::patch('/hosting/servers/{server}', [HostingAdminController::class, 'updateServer'])->name('hosting.servers.update');
     Route::patch('/hosting/servers/{server}/toggle', [HostingAdminController::class, 'toggleServer'])->name('hosting.servers.toggle');
     Route::post('/hosting/packages', [HostingAdminController::class, 'storePackage'])->name('hosting.packages.store');
+    Route::patch('/hosting/packages/{hostingPackage}', [HostingAdminController::class, 'updatePackage'])->name('hosting.packages.update');
     Route::patch('/hosting/packages/{hostingPackage}/toggle', [HostingAdminController::class, 'togglePackage'])->name('hosting.packages.toggle');
     Route::patch('/hosting/packages/{hostingPackage}/whm-mapping', [HostingAdminController::class, 'updateWhmMapping'])->name('hosting.packages.whm-mapping');
     Route::post('/hosting/domain-pricing', [HostingAdminController::class, 'storeDomainPricing'])->name('hosting.domain-pricing.store');

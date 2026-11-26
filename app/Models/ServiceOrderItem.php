@@ -8,14 +8,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ServiceOrderItem extends Model
 {
     protected $fillable = [
-        'service_order_id', 'item_type', 'domain_name', 'hosting_package_id',
-        'parent_item_id', 'provider', 'provider_product_id', 'quantity',
-        'billing_period', 'unit_price', 'line_total', 'currency', 'item_metadata',
+        'service_order_id',
+        'item_type',
+        'domain_name',
+        'hosting_package_id',
+        'parent_item_id',
+        'provider',
+        'provider_product_id',
+        'quantity',
+        'billing_period',
+        'unit_price',
+        'line_total',
+        'currency',
+        'item_metadata',
     ];
 
     protected function casts(): array
     {
-        return ['unit_price' => 'decimal:2', 'line_total' => 'decimal:2', 'item_metadata' => 'array'];
+        return
+            [
+                'unit_price' => 'decimal:2',
+                'line_total' => 'decimal:2',
+                'item_metadata' => 'array'
+            ];
     }
 
     public function order(): BelongsTo

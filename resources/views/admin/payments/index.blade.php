@@ -1,63 +1,100 @@
 @extends('layouts.app')
-@section('title', 'Payments & Subscriptions')
+@section('title', 'Payments')
 @section('content')
-<div class="space-y-6">
-    <div class="flex justify-between items-center">
-        <div class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-            <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            Gateway: {{ $gatewayStatus }}
+    <div class="admin-page-heading">
+        <div>
+            <h1>Payments</h1>
+            <p>Review customer subscriptions and recent service orders.</p>
         </div>
+        <span class="admin-status" data-state="{{ $gatewayStatus === 'Configured' ? 'active' : 'pending' }}">Paystack:
+            {{ $gatewayStatus }}</span>
     </div>
-
-    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <table class="w-full text-left">
-            <thead class="bg-gray-50 border-b text-xs uppercase text-gray-500 font-bold">
-                <tr>
-                    <th class="p-4">User</th>
-                    <th class="p-4">Current Plan</th>
-                    <th class="p-4">Expiry Date</th>
-                    <th class="p-4 text-right">Manual Override</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y text-sm">
-                @foreach($users as $user)
-                <tr>
-                    <td class="p-4 font-medium">{{ $user->name }}</td>
-                    <td class="p-4">
-                        @if($user->subscription?->package)
-                            <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
-                                {{ $user->subscription->package->name }}
-                            </span>
-                        @else
-                            <span class="text-gray-400 italic">No Active Plan</span>
-                        @endif
-                    </td>
-                    <td class="p-4 text-gray-600">
-                        {{ $user->subscription?->expires_at?->format('M d, Y') ?? 'N/A' }}
-                    </td>
-                    <td class="p-4 text-right">
-                        <form action="{{ route('admin.payments.override', $user) }}" method="POST" class="flex justify-end gap-2">
-                            @csrf
-                            <select name="package_id" class="text-xs border-gray-300 rounded px-2 py-1">
-                                @foreach($packages as $package)
-                                    <option value="{{ $package->id }}">{{ $package->name }}</option>
-                                @endforeach
-                            </select>
-                            <button type="submit" class="bg-gray-800 text-white px-3 py-1 rounded text-xs hover:bg-black transition">
-                                Grant Access
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-        <div class="p-4">
-            {{ $users->links() }}
-        </div>
-    </div>
-</div>
+    <section class="admin-panel">
+        <h2>Marketing subscription access</h2>
+        @if ($users->isEmpty())
+            <div class="admin-empty">No customer subscriptions are available.</div>
+        @else
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Current plan</th>
+                            <th>Expiry date</th>
+                            <th>Manual access override</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($users as $user)
+                            <tr>
+                                <td><strong>{{ $user->name }}</strong><br><span>{{ $user->email }}</span></td>
+                                <td>{{ $user->subscription?->package?->name ?: 'No active plan' }}</td>
+                                <td>{{ $user->subscription?->expires_at?->format('M j, Y') ?: '—' }}</td>
+                                <td>
+                                    <form action="{{ route('admin.payments.override', $user) }}" method="POST"
+                                        style="display:flex;gap:8px;flex-wrap:wrap"
+                                        onsubmit="return confirm('Grant a one-month plan to this customer?')">
+                                        @csrf
+                                        <label class="sr-only" for="package-{{ $user->id }}">Choose plan for
+                                            {{ $user->name }}</label>
+                                        <select id="package-{{ $user->id }}" name="package_id" required
+                                            style="padding:8px;border:1px solid #dce4f1;border-radius:8px">
+                                            @foreach ($packages as $package)
+                                                <option value="{{ $package->id }}">{{ $package->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button class="admin-button admin-button-primary" type="submit">Grant
+                                            access</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:16px">{{ $users->links() }}</div>
+        @endif
+    </section>
+    <section class="admin-panel">
+        <h2>Recent service orders</h2>
+        @if ($serviceOrders->isEmpty())
+            <div class="admin-empty">No service orders have been recorded.</div>
+        @else
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Customer</th>
+                            <th>Service</th>
+                            <th>Total</th>
+                            <th>Payment reference</th>
+                            <th>Status</th>
+                            <th>Paid</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($serviceOrders as $order)
+                            <tr>
+                                <td><strong>{{ $order->order_number }}</strong></td>
+                                <td>{{ $order->user?->name ?: 'Customer unavailable' }}<br><span>{{ $order->user?->email }}</span>
+                                </td>
+                                <td>{{ str_replace('_', ' ', ucfirst($order->service_type)) }}@if ($order->domain_name)
+                                        <br><span>{{ $order->domain_name }}</span>
+                                    @endif
+                                </td>
+                                <td>{{ $order->formattedAmount() }}</td>
+                                <td>{{ $order->payment_reference ?: '—' }}</td>
+                                <td><span class="admin-status"
+                                        data-state="{{ $order->status === 'paid' ? 'paid' : ($order->status === 'failed' ? 'failed' : 'pending') }}">{{ str_replace('_', ' ', ucfirst($order->status)) }}</span>
+                                </td>
+                                <td>{{ $order->paid_at?->format('M j, Y H:i') ?: '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:16px">{{ $serviceOrders->links() }}</div>
+        @endif
+    </section>
 @endsection

@@ -8,8 +8,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UserService extends Model
 {
     protected $fillable = [
-        'user_id', 'service_order_id', 'service_order_item_id', 'service_type',
-        'name', 'identifier', 'provider', 'status', 'started_at', 'expires_at', 'metadata',
+        'user_id',
+        'service_order_id',
+        'service_order_item_id',
+        'service_type',
+        'name',
+        'identifier',
+        'provider',
+        'status',
+        'started_at',
+        'expires_at',
+        'metadata',
     ];
 
     protected function casts(): array

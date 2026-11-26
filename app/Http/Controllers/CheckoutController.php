@@ -57,7 +57,7 @@ class CheckoutController extends Controller
         } catch (Throwable $exception) {
             report($exception);
             return redirect()->route('domains.search', ['domain' => $domain])->withErrors([
-                'checkout' => 'We could not confirm live availability and pricing for '.$domain.'. Please search again or contact support.',
+                'checkout' => 'We could not confirm live availability and pricing for ' . $domain . '. Please search again or contact support.',
             ]);
         }
 
@@ -100,7 +100,7 @@ class CheckoutController extends Controller
                 'user_id' => auth()->id(),
                 'hosting_server_id' => $server?->id,
                 'hosting_package_id' => $package?->id,
-                'order_number' => 'DRY-'.Str::upper(Str::random(10)),
+                'order_number' => 'DRY-' . Str::upper(Str::random(10)),
                 'service_type' => $package ? 'domain_and_hosting' : 'domain_registration',
                 'domain_name' => $domain,
                 'amount_ngn' => 0,
@@ -162,30 +162,39 @@ class CheckoutController extends Controller
     public function pay(Request $request, ServiceOrder $order)
     {
         abort_unless($order->user_id === auth()->id(), 403);
-        if ($order->status === 'paid') return redirect()->route('my-services.index')->with('status', 'This order is already paid.');
-        if ($order->status !== 'awaiting_payment') return back()->withErrors(['payment' => 'This order is not currently available for payment.']);
+        if ($order->status === 'paid') 
+            return redirect()->route('my-services.index')->with('status', 'This order is already paid.');
+        if ($order->status !== 'awaiting_payment') 
+            return back()->withErrors(['payment' => 'This order is not currently available for payment.']);
         $currency = strtoupper($order->currency ?: 'NGN');
         $allowedCurrencies = array_map('strtoupper', config('services.paystack.currencies', ['NGN', 'USD']));
-        if (!in_array($currency, $allowedCurrencies, true)) return back()->withErrors(['payment' => 'This currency is not enabled for Paystack checkout.']);
+        if (!in_array($currency, $allowedCurrencies, true)) 
+            return back()->withErrors(['payment' => 'This currency is not enabled for Paystack checkout.']);
         $secret = config('services.paystack.secret_key');
-        if (!$secret) return back()->withErrors(['payment' => 'Paystack is not configured. Add PAYSTACK_SECRET_KEY to the server environment.']);
+        if (!$secret) 
+            return back()->withErrors(['payment' => 'Paystack is not configured. Add PAYSTACK_SECRET_KEY to the server environment.']);
         $majorAmount = (float) ($order->amount ?? 0);
         if ($majorAmount <= 0) $majorAmount = (float) ($order->amount_ngn ?? 0);
         $minorAmount = (int) round($majorAmount * 100);
-        if ($minorAmount < 1) return back()->withErrors(['payment' => 'This order has an invalid payment amount. Please contact support.']);
-        $reference = 'DRYPP-'.Str::upper(Str::random(20));
+        if ($minorAmount < 1) 
+            return back()->withErrors(['payment' => 'This order has an invalid payment amount. Please contact support.']);
+        $reference = 'DRYPP-' . Str::upper(Str::random(20));
         try {
             $response = \Illuminate\Support\Facades\Http::withToken($secret)->acceptJson()->timeout(20)->post('https://api.paystack.co/transaction/initialize', [
-                'email' => auth()->user()->email, 'amount' => $minorAmount, 'currency' => $currency, 'reference' => $reference,
+                'email' => auth()->user()->email,
+                'amount' => $minorAmount,
+                'currency' => $currency,
+                'reference' => $reference,
                 'callback_url' => route('checkout.callback'),
                 'metadata' => ['order_id' => $order->id, 'order_number' => $order->order_number, 'user_id' => auth()->id()],
             ]);
         } catch (\Throwable $exception) {
-            report($exception); return back()->withErrors(['payment' => 'We could not connect to Paystack. Please try again shortly.']);
+            report($exception);
+            return back()->withErrors(['payment' => 'We could not connect to Paystack. Please try again shortly.']);
         }
         if (!$response->successful() || $response->json('status') !== true || !$response->json('data.authorization_url')) {
-            report(new RuntimeException('Paystack initialization failed for order '.$order->order_number.': '.(string) $response->json('message', 'No checkout URL.')));
-            return back()->withErrors(['payment' => 'Paystack could not start this payment. Confirm that '.$currency.' is enabled on your Paystack account, then try again.']);
+            report(new RuntimeException('Paystack initialization failed for order ' . $order->order_number . ': ' . (string) $response->json('message', 'No checkout URL.')));
+            return back()->withErrors(['payment' => 'Paystack could not start this payment. Confirm that ' . $currency . ' is enabled on your Paystack account, then try again.']);
         }
         $order->update(['payment_reference' => $reference, 'metadata' => array_merge($order->metadata ?? [], ['payment' => ['provider' => 'paystack', 'currency' => $currency, 'amount' => number_format($majorAmount, 2, '.', ''), 'amount_minor' => $minorAmount, 'initialized_at' => now()->toIso8601String()]])]);
         return redirect()->away($response->json('data.authorization_url'));
@@ -196,8 +205,9 @@ class CheckoutController extends Controller
         $reference = (string) $request->query('reference', $request->query('trxref', ''));
         abort_if($reference === '', 400, 'Missing payment reference.');
         $order = ServiceOrder::where('payment_reference', $reference)->firstOrFail();
-        try { $payments->verifyAndMarkPaid($reference); }
-        catch (\Throwable $exception) {
+        try {
+            $payments->verifyAndMarkPaid($reference);
+        } catch (\Throwable $exception) {
             report($exception);
             return redirect()->route('checkout.show', $order)->withErrors(['payment' => 'We could not verify this payment yet. If you were charged, do not pay again; contact support with your order number.']);
         }
