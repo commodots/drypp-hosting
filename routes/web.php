@@ -5,6 +5,7 @@ use App\Http\Controllers\PublicSiteController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\DomainSearchController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\User\CampaignController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\ServiceController;
@@ -26,6 +27,12 @@ use App\Http\Controllers\WebhookController;
 Route::get('/', [PublicSiteController::class, 'home'])->name('home');
 Route::get('/services', [PublicSiteController::class, 'services'])->name('services');
 Route::get('/domains/search', [DomainSearchController::class, 'search'])->name('domains.search');
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart/domains', [CartController::class, 'storeDomain'])->name('cart.domains.store');
+Route::post('/cart/hosting', [CartController::class, 'storeHosting'])->name('cart.hosting.store');
+Route::patch('/cart/items/{cartItem}', [CartController::class, 'update'])->name('cart.items.update');
+Route::delete('/cart/items/{cartItem}', [CartController::class, 'destroy'])->name('cart.items.destroy');
+Route::patch('/cart/currency', [CartController::class, 'currency'])->name('cart.currency');
 Route::post('/webhooks/sendgrid', [WebhookController::class, 'sendgrid'])->name('webhooks.sendgrid');
 Route::post('/webhooks/paystack', [WebhookController::class, 'paystack'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class])
@@ -70,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/hosting', [HostingController::class, 'index'])->name('hosting.index');
     Route::post('/hosting/packages/{hostingPackage}/order', [HostingController::class, 'order'])->name('hosting.order');
     Route::get('/checkout/start', [CheckoutController::class, 'start'])->name('checkout.start');
+    Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
     Route::get('/checkout/{order}', [CheckoutController::class, 'show'])->name('checkout.show');
     Route::post('/checkout/{order}/pay', [CheckoutController::class, 'pay'])->name('checkout.pay');
 

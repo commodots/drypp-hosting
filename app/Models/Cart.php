@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Cart extends Model
 {
     protected $fillable = [
-        'user_id', 'token', 'currency', 'country_code', 'status', 'expires_at',
+        'user_id', 'token', 'currency', 'country_code', 'status', 'expires_at', 'service_order_id',
     ];
 
     protected function casts(): array
@@ -29,6 +29,11 @@ class Cart extends Model
 
     public function activeItems(): HasMany
     {
-        return $this->items()->whereNull('parent_item_id')->orWhereNotNull('parent_item_id');
+        return $this->items();
+    }
+
+    public function serviceOrder(): BelongsTo
+    {
+        return $this->belongsTo(ServiceOrder::class);
     }
 }

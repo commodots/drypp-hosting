@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Models\HostingAccount;
+use App\Models\Cart;
 use App\Models\ServiceOrder;
 use App\Models\UserService;
 use App\Jobs\ProvisionHostingAccount;
@@ -50,7 +51,7 @@ class PaystackPaymentService
                         ['service_order_item_id' => $item->id],
                         [
                             'user_id' => $lockedOrder->user_id,
-                            'hosting_server_id' => $lockedOrder->hosting_server_id,
+                            'hosting_server_id' => $item->hosting_server_id ?: $lockedOrder->hosting_server_id,
                             'hosting_package_id' => $item->hosting_package_id,
                             'service_order_id' => $lockedOrder->id,
                             'domain_name' => strtolower($item->domain_name),
@@ -120,6 +121,14 @@ class PaystackPaymentService
                 ]);
                 if ($hostingAccount->status !== 'active') {
                     $hostingAccountIds[] = $hostingAccount->id;
+                }
+            }
+
+            $cartId = data_get($lockedOrder->metadata, 'cart_id');
+            if ($cartId) {
+                $cart = Cart::query()->whereKey($cartId)->lockForUpdate()->first();
+                if ($cart && $cart->service_order_id === $lockedOrder->id && $cart->status === 'checkout_pending') {
+                    $cart->update(['status' => 'converted']);
                 }
             }
 

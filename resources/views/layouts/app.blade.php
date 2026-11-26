@@ -667,8 +667,10 @@
     <div class="admin-frame">
         @if (request()->routeIs('admin.*'))
             @include('partials.sidebar')
-        @else
+        @elseif (auth()->check())
             @include('partials.customer-sidebar')
+        @else
+            @include('partials.guest-sidebar')
         @endif
         <div class="admin-overlay" id="adminSidebarOverlay"></div>
         <div class="admin-main-wrap">
@@ -678,13 +680,22 @@
                         aria-label="Open navigation" aria-expanded="false">☰</button>
                     <div>
                         <div class="admin-kicker">Drypp /
-                            {{ request()->routeIs('admin.*') ? 'Administration' : 'Customer workspace' }}</div>
+                            {{ request()->routeIs('admin.*') ? 'Administration' : (auth()->check() ? 'Customer workspace' : 'Marketplace') }}
+                        </div>
                         <div class="admin-top-title">@yield('title', 'Dashboard')</div>
                     </div>
                 </div>
-                <div class="admin-user"><span
-                        class="admin-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</span><span
-                        class="admin-user-email">{{ auth()->user()->email ?? '' }}</span></div>
+                @auth
+                    <div class="admin-user">
+                        <span class="admin-avatar">{{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}</span>
+                        <span class="admin-user-email">{{ auth()->user()->email ?? '' }}</span>
+                    </div>
+                @else
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('login') }}" class="admin-button">Log in</a>
+                        <a href="{{ route('register') }}" class="admin-button admin-button-primary">Create account</a>
+                    </div>
+                @endauth
             </header>
             <main class="admin-content">
                 @if (session('status') || session('success'))

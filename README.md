@@ -8,6 +8,7 @@ Laravel 12 application extending the existing Drypp email-marketing platform wit
 - Existing email-marketing authentication and campaign application retained.
 - Authenticated customer hosting dashboard.
 - Hosting package catalogue and order creation.
+- Persistent guest and customer carts for domain registrations and hosting, with one combined order and Paystack checkout.
 - Admin hosting control centre for servers, capacity, package resource limits, free-website eligibility and domain markup rules.
 - Per-server and per-package capacity reservations while orders await payment.
 - Paystack payment initialization and server-side verification callback.
@@ -33,6 +34,7 @@ The existing seed creates `admin@drypp.com` with password `password` for local d
 ## Provider integration status
 
 - **Paystack:** checkout initialization and callback verification are implemented. Configure `PAYSTACK_SECRET_KEY` and test using Paystack test credentials before accepting real money. Production hardening should add a signed Paystack webhook and idempotent event processing.
+- **Marketplace cart:** guest carts use random server-side session tokens and merge into the customer's cart at login or registration. Prices are calculated from the USD catalogue and rechecked with Porkbun before order creation. NGN checkout uses the configured USD-to-NGN display rate and is available only when NGN is enabled in `PAYSTACK_CURRENCIES`. Apply pending migrations with `php artisan migrate` before deploying this workflow.
 - **Porkbun:** credentials are prepared in configuration, but live domain availability, registration, renewal and DNS API calls are not yet implemented. The domain field validates syntax only; it does not promise availability or register a domain.
 - **Verpex WHM/cPanel:** server/package configuration and order records are implemented, but WHM account creation, usage sync, secure cPanel login and DNS automation are not yet connected. Paid accounts remain `pending_provisioning` until the provider connector is added.
 - **Lead generation:** the customer-facing page is a placeholder. Automated sourcing and delivery require a selected authorized data provider, package definitions, privacy review and usage limits.

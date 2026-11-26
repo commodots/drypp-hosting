@@ -24,7 +24,9 @@
             class="{{ request()->routeIs('my-services.*') ? 'active' : '' }}"><span
                 class="customer-nav-icon">▣</span>My Services</a>
         <a href="{{ route('hosting.index') }}" class="{{ request()->routeIs('hosting.*') ? 'active' : '' }}"><span
-                class="customer-nav-icon">⌂</span>Domains & Hosting</a>
+                class="customer-nav-icon">⌂</span>Marketplace / Add Service</a>
+        <a href="{{ route('cart.index') }}" class="{{ request()->routeIs('cart.*') ? 'active' : '' }}"><span
+                class="customer-nav-icon">&#x1F6D2;</span>Cart</a>
         <a href="{{ route('billing.index') }}" class="{{ request()->routeIs('billing.*') ? 'active' : '' }}"><span
                 class="customer-nav-icon">＄</span>Billing & Orders</a>
         <a href="{{ route('leads.index') }}" class="{{ request()->routeIs('leads.*') ? 'active' : '' }}"><span

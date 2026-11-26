@@ -12,6 +12,7 @@ class ServiceOrderItem extends Model
         'item_type',
         'domain_name',
         'hosting_package_id',
+        'hosting_server_id',
         'parent_item_id',
         'provider',
         'provider_product_id',
@@ -41,6 +42,11 @@ class ServiceOrderItem extends Model
     public function hostingPackage(): BelongsTo
     {
         return $this->belongsTo(HostingPackage::class);
+    }
+
+    public function hostingServer(): BelongsTo
+    {
+        return $this->belongsTo(HostingServer::class);
     }
 
     public function parentItem(): BelongsTo
