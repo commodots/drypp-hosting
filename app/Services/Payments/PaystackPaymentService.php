@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use App\Models\HostingAccount;
+use App\Models\Cart;
 use App\Models\ServiceOrder;
 use App\Models\UserService;
 use App\Jobs\ProvisionHostingAccount;
@@ -18,7 +19,7 @@ class PaystackPaymentService
         $secret = config('services.paystack.secret_key');
         if (!$secret) throw new RuntimeException('Paystack is not configured.');
         $order = ServiceOrder::with('user')->where('payment_reference', $reference)->firstOrFail();
-        $response = Http::withToken($secret)->acceptJson()->timeout(20)->retry(2, 250)->get('https://api.paystack.co/transaction/verify/'.urlencode($reference));
+        $response = Http::withToken($secret)->acceptJson()->timeout(20)->retry(2, 250)->get('https://api.paystack.co/transaction/verify/' . urlencode($reference));
         $data = $response->json('data');
         $expectedAmount = $this->amountInMinorUnits($order);
         $expectedCurrency = strtoupper($order->currency ?: 'NGN');
@@ -50,7 +51,7 @@ class PaystackPaymentService
                         ['service_order_item_id' => $item->id],
                         [
                             'user_id' => $lockedOrder->user_id,
-                            'hosting_server_id' => $lockedOrder->hosting_server_id,
+                            'hosting_server_id' => $item->hosting_server_id ?: $lockedOrder->hosting_server_id,
                             'hosting_package_id' => $item->hosting_package_id,
                             'service_order_id' => $lockedOrder->id,
                             'domain_name' => strtolower($item->domain_name),
@@ -123,6 +124,14 @@ class PaystackPaymentService
                 }
             }
 
+            $cartId = data_get($lockedOrder->metadata, 'cart_id');
+            if ($cartId) {
+                $cart = Cart::query()->whereKey($cartId)->lockForUpdate()->first();
+                if ($cart && $cart->service_order_id === $lockedOrder->id && $cart->status === 'checkout_pending') {
+                    $cart->update(['status' => 'converted']);
+                }
+            }
+
             return $lockedOrder->fresh(['user', 'hostingPackage', 'hostingAccount', 'items']);
         });
 
@@ -153,9 +162,9 @@ class PaystackPaymentService
             }
             try {
                 $items = $paidOrder->items;
-                $lines = $items->map(fn ($item) => strtoupper(str_replace('_', ' ', $item->item_type)).': '.($item->domain_name ?: $item->hostingPackage?->name ?: 'Service').' — '.strtoupper($item->currency).' '.number_format((float) $item->line_total, 2))->implode("\n");
+                $lines = $items->map(fn($item) => strtoupper(str_replace('_', ' ', $item->item_type)) . ': ' . ($item->domain_name ?: $item->hostingPackage?->name ?: 'Service') . ' — ' . strtoupper($item->currency) . ' ' . number_format((float) $item->line_total, 2))->implode("\n");
                 Mail::raw("Hello {$paidOrder->user->name},\n\nWe have confirmed payment for your Drypp order {$paidOrder->order_number}.\n\n{$lines}\n\nTotal paid: {$paidOrder->formattedAmount()}\n\nYour services are now listed in My Services and queued for fulfilment. We will notify you when activation is complete.\n\nThank you,\nDrypp", function ($message) use ($paidOrder) {
-                    $message->to($paidOrder->user->email)->subject('Payment confirmed — Drypp order '.$paidOrder->order_number);
+                    $message->to($paidOrder->user->email)->subject('Payment confirmed — Drypp order ' . $paidOrder->order_number);
                 });
             } catch (\Throwable $exception) {
                 report($exception);
