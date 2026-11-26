@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\HostingAccount;
+use App\Models\ServiceOrderItem;
 use App\Models\UserService;
 use App\Services\Hosting\WhmApiClient;
 use Illuminate\Bus\Queueable;
@@ -117,6 +118,12 @@ class ProvisionHostingAccount implements ShouldQueue
                 'metadata' => $metadata,
             ]);
         }
+
+        if ($account->service_order_item_id) {
+            ServiceOrderItem::find($account->service_order_item_id)?->setFulfillmentStatus('fulfilled');
+        } elseif ($account->order && ! $account->order->items()->exists()) {
+            $account->order->update(['status' => 'fulfilled']);
+        }
     }
 
     public function failed(Throwable $exception): void
@@ -145,5 +152,11 @@ class ProvisionHostingAccount implements ShouldQueue
             $serviceQuery->where('identifier', $account->domain_name);
         }
         $serviceQuery->update(['status' => 'provisioning_failed', 'updated_at' => now()]);
+
+        if ($account->service_order_item_id) {
+            ServiceOrderItem::find($account->service_order_item_id)?->setFulfillmentStatus('provisioning_failed');
+        } elseif ($account->order && ! $account->order->items()->exists()) {
+            $account->order->update(['status' => 'processing']);
+        }
     }
 }

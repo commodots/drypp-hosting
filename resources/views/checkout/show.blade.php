@@ -34,6 +34,7 @@
                                 <div>{{ $item->domain_name ?: $item->hostingPackage?->name ?: 'Service' }}</div>
                                 <small
                                     class="muted">{{ $item->billing_period ? 'Billing period: ' . $item->billing_period : '' }}</small>
+                                <small class="muted">Fulfilment: {{ str_replace('_', ' ', ucfirst($item->fulfillment_status)) }}</small>
                             </div>
                             <strong>{{ strtoupper($item->currency) }}
                                 {{ number_format((float) $item->line_total, 2) }}</strong>
@@ -44,11 +45,18 @@
                 <p class="muted payment-note">Payment is processed securely by Paystack in
                     {{ strtoupper($order->currency ?: 'USD') }}. Domains and hosting appear in My Services after payment
                     confirmation; domain registration and hosting provisioning follow their provider workflows.</p>
+                @if ($order->status === 'awaiting_payment' && $order->expires_at)
+                    <p class="muted payment-note">Pay before {{ $order->expires_at->format('M j, Y g:i A') }} to keep your domain and hosting reservations.</p>
+                @endif
                 @if ($order->status === 'paid')
                     <a class="btn btn-primary" href="{{ route('my-services.index') }}">View My Services</a>
-                @else
+                @elseif ($order->status === 'awaiting_payment')
                     <form method="POST" action="{{ route('checkout.pay', $order) }}">@csrf<button class="btn btn-primary"
                             type="submit">Pay once with Paystack</button></form>
+                @elseif ($order->status === 'fulfilled' || $order->status === 'partially_fulfilled' || $order->status === 'processing')
+                    <a class="btn btn-primary" href="{{ route('my-services.index') }}">View My Services</a>
+                @else
+                    <a class="btn btn-light" href="{{ route('cart.index') }}">Return to cart</a>
                 @endif
             </section>
         </main>

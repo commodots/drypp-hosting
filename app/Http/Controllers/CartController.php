@@ -6,6 +6,7 @@ use App\Models\CartItem;
 use App\Models\HostingPackage;
 use App\Services\CartCheckoutService;
 use App\Services\CartService;
+use App\Services\ServiceOrderExpiryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -102,11 +103,19 @@ class CartController extends Controller
         return back()->with('status', 'Cart currency updated. Prices are converted from USD using the configured rate.');
     }
 
-    public function checkout(Request $request, CartService $carts, CartCheckoutService $checkout): RedirectResponse
+    public function checkout(
+        Request $request,
+        CartService $carts,
+        CartCheckoutService $checkout,
+        ServiceOrderExpiryService $expiry
+    ): RedirectResponse
     {
         $cart = $carts->current($request);
         if ($cart->service_order_id) {
-            return redirect()->route('checkout.show', $cart->service_order_id);
+            if (! $expiry->expireIfDue($cart->service_order_id)) {
+                return redirect()->route('checkout.show', $cart->service_order_id);
+            }
+            $cart = $cart->fresh();
         }
 
         try {

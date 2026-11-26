@@ -246,7 +246,11 @@ class MarketplaceCartTest extends TestCase
         $this->actingAs($user)->get(route('checkout.callback', ['reference' => 'DRYPP-TEST-REFERENCE']))
             ->assertRedirect(route('my-services.index'));
 
-        $this->assertSame('paid', $order->fresh()->status);
+        $this->assertSame('processing', $order->fresh()->status);
+        $this->assertSame(
+            'pending_registration',
+            $order->items()->where('item_type', 'domain_registration')->value('fulfillment_status')
+        );
         $this->assertSame('converted', $cart->fresh()->status);
     }
 }

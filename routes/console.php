@@ -15,3 +15,4 @@ Schedule::command('app:warmup-progress')->daily();
 Schedule::command('inbox:health')->everyTenMinutes();
 Schedule::command('app:reset-health-stats')->daily();
 Schedule::command('spam:check')->everyFiveMinutes();
+Schedule::command('orders:expire-unpaid')->everyFiveMinutes()->withoutOverlapping();

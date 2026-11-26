@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\ServiceOrder;
 use App\Models\UserService;
 use App\Jobs\ProvisionHostingAccount;
+use App\Services\ServiceOrderExpiryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -14,16 +15,38 @@ use RuntimeException;
 
 class PaystackPaymentService
 {
+    public function __construct(private readonly ServiceOrderExpiryService $orderExpiry)
+    {
+    }
+
     public function verifyAndMarkPaid(string $reference): ServiceOrder
     {
         $secret = config('services.paystack.secret_key');
         if (!$secret) throw new RuntimeException('Paystack is not configured.');
         $order = ServiceOrder::with('user')->where('payment_reference', $reference)->firstOrFail();
+        if (in_array($order->status, ['paid', 'processing', 'partially_fulfilled', 'fulfilled'], true)) {
+            return $order;
+        }
+        if ($order->status !== 'awaiting_payment') {
+            throw new RuntimeException('This order is not awaiting payment.');
+        }
+        if ($this->orderExpiry->expireIfDue($order->id)) {
+            throw new RuntimeException('This service order expired before payment was verified.');
+        }
+
         $response = Http::withToken($secret)->acceptJson()->timeout(20)->retry(2, 250)->get('https://api.paystack.co/transaction/verify/' . urlencode($reference));
         $data = $response->json('data');
         $expectedAmount = $this->amountInMinorUnits($order);
         $expectedCurrency = strtoupper($order->currency ?: 'NGN');
         $allowedCurrencies = array_map('strtoupper', config('services.paystack.currencies', ['NGN', 'USD']));
+        if ($response->successful() && $response->json('status') === true
+            && in_array(data_get($data, 'status'), ['failed', 'abandoned'], true)
+            && (string) data_get($data, 'reference') === $reference
+            && strtolower((string) data_get($data, 'customer.email')) === strtolower((string) $order->user->email)) {
+            $this->orderExpiry->markPaymentFailed($order->id);
+            throw new RuntimeException('Paystack confirmed that this payment failed.');
+        }
+
         $valid = $response->successful() && $response->json('status') === true
             && data_get($data, 'status') === 'success'
             && (int) data_get($data, 'amount', -1) === $expectedAmount
@@ -37,7 +60,9 @@ class PaystackPaymentService
         $hostingAccountIds = [];
         $paidOrder = DB::transaction(function () use ($order, &$newlyPaid, &$hostingAccountIds) {
             $lockedOrder = ServiceOrder::whereKey($order->id)->lockForUpdate()->firstOrFail();
-            if ($lockedOrder->status === 'paid') return $lockedOrder->fresh(['user', 'hostingPackage', 'hostingAccount', 'items']);
+            if (in_array($lockedOrder->status, ['paid', 'processing', 'partially_fulfilled', 'fulfilled'], true)) {
+                return $lockedOrder->fresh(['user', 'hostingPackage', 'hostingAccount', 'items']);
+            }
             if ($lockedOrder->status !== 'awaiting_payment') throw new RuntimeException('This order is not awaiting payment.');
             $lockedOrder->update(['status' => 'paid', 'paid_at' => now()]);
             $newlyPaid = true;
@@ -106,6 +131,13 @@ class PaystackPaymentService
                         ],
                     ]
                 );
+
+                $itemStatus = match ($item->item_type) {
+                    'domain_registration', 'domain_renewal' => 'pending_registration',
+                    'hosting' => 'provisioning',
+                    default => 'pending_fulfillment',
+                };
+                $item->setFulfillmentStatus($itemStatus);
             }
 
             // Backward compatibility for older hosting orders that predate order items.

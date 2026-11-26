@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\HostingPackage;
 use App\Models\ServiceOrder;
 use App\Services\CartService;
+use App\Services\ServiceOrderExpiryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -35,16 +36,22 @@ class CheckoutController extends Controller
         return redirect()->route('cart.index')->with('status', 'Your previous selection has been added to the cart. Review it before checkout.');
     }
 
-    public function show(ServiceOrder $order)
+    public function show(ServiceOrder $order, ServiceOrderExpiryService $expiry)
     {
         abort_unless($order->user_id === auth()->id(), 403);
+        $expiry->expireIfDue($order->id);
+        $order->refresh();
         $order->load(['hostingPackage', 'items.hostingPackage']);
         return view('checkout.show', compact('order'));
     }
 
-    public function pay(Request $request, ServiceOrder $order)
+    public function pay(Request $request, ServiceOrder $order, ServiceOrderExpiryService $expiry)
     {
         abort_unless($order->user_id === auth()->id(), 403);
+        if ($expiry->expireIfDue($order->id)) {
+            return back()->withErrors(['payment' => 'This order expired before payment. Its reservations were released; return to your cart to place a new order.']);
+        }
+        $order->refresh();
         if ($order->status === 'paid') {
             return redirect()->route('my-services.index')->with('status', 'This order is already paid.');
         }

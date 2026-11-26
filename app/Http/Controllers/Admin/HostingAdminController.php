@@ -8,6 +8,7 @@ use App\Models\HostingPackage;
 use App\Models\HostingServer;
 use App\Models\ServiceOrder;
 use App\Models\HostingAccount;
+use App\Models\ServiceOrderItem;
 use App\Models\UserService;
 use App\Jobs\ProvisionHostingAccount;
 use Illuminate\Http\Request;
@@ -218,7 +219,11 @@ class HostingAdminController extends Controller
         abort_unless($account->status === 'provisioning_failed', 409, 'Only failed provisioning requests can be retried.');
 
         $account->load('order');
-        abort_unless($account->order?->status === 'paid', 409, 'Only paid hosting orders can be provisioned.');
+        abort_unless(
+            in_array($account->order?->status, ['paid', 'processing', 'partially_fulfilled'], true),
+            409,
+            'Only paid hosting orders can be provisioned.'
+        );
 
         DB::transaction(function () use ($account) {
             $lockedAccount = HostingAccount::whereKey($account->id)->lockForUpdate()->firstOrFail();
@@ -241,6 +246,10 @@ class HostingAdminController extends Controller
                     fn($query) => $query->where('identifier', $lockedAccount->domain_name)
                 )
                 ->update(['status' => 'pending_provisioning', 'updated_at' => now()]);
+
+            if ($lockedAccount->service_order_item_id) {
+                ServiceOrderItem::find($lockedAccount->service_order_item_id)?->setFulfillmentStatus('provisioning');
+            }
         });
 
         try {
@@ -261,6 +270,9 @@ class HostingAdminController extends Controller
                     fn($query) => $query->where('identifier', $account->domain_name)
                 )
                 ->update(['status' => 'provisioning_failed', 'updated_at' => now()]);
+            if ($account->service_order_item_id) {
+                ServiceOrderItem::find($account->service_order_item_id)?->setFulfillmentStatus('provisioning_failed');
+            }
 
             return back()->withErrors(['provisioning' => 'The retry could not be queued. Please try again or contact support.']);
         }

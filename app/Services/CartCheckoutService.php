@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 use RuntimeException;
 
 class CartCheckoutService
@@ -27,7 +28,7 @@ class CartCheckoutService
     {
         if ($cart->service_order_id) {
             $existingOrder = ServiceOrder::findOrFail($cart->service_order_id);
-            if (in_array($existingOrder->status, ['awaiting_payment', 'paid'], true)) {
+            if (in_array($existingOrder->status, ['awaiting_payment', 'paid', 'processing', 'partially_fulfilled', 'fulfilled'], true)) {
                 return ['order' => $existingOrder, 'prices_changed' => false];
             }
             throw new RuntimeException('This cart is already linked to an order that cannot be paid.');
@@ -46,7 +47,8 @@ class CartCheckoutService
         $itemIds = $cartItems->modelKeys();
         $itemUpdatedAt = $cartItems->mapWithKeys(fn (CartItem $item) => [$item->id => $item->updated_at?->toISOString()]);
 
-        $order = DB::transaction(function () use ($request, $cart, $itemIds, $itemUpdatedAt) {
+        try {
+            $order = DB::transaction(function () use ($request, $cart, $itemIds, $itemUpdatedAt) {
             $lockedCart = Cart::query()->whereKey($cart->id)->lockForUpdate()->firstOrFail();
             if ($lockedCart->status !== 'active' || $lockedCart->service_order_id) {
                 throw new RuntimeException('This cart is not available for checkout.');
@@ -96,6 +98,7 @@ class CartCheckoutService
                 'amount' => $total,
                 'currency' => $currency,
                 'status' => 'awaiting_payment',
+                'expires_at' => now()->addMinutes(max(1, (int) config('services.paystack.order_expiry_minutes', 30))),
                 'metadata' => [
                     'checkout_source' => 'cart',
                     'cart_id' => $lockedCart->id,
@@ -140,7 +143,14 @@ class CartCheckoutService
             ]);
 
             return $order->load('items');
-        });
+            });
+        } catch (QueryException $exception) {
+            if (str_contains(strtolower($exception->getMessage()), 'domain_reservation')) {
+                throw new RuntimeException('This domain is already reserved by another order. Remove it from the cart or contact support.', 0, $exception);
+            }
+
+            throw $exception;
+        }
 
         return ['order' => $order, 'prices_changed' => false];
     }
@@ -259,6 +269,10 @@ class CartCheckoutService
             'line_total' => $item->line_total,
             'currency' => $currency,
             'item_metadata' => $snapshot,
+            'fulfillment_status' => 'awaiting_payment',
+            'domain_reservation_key' => $item->item_type === 'domain_registration'
+                ? hash('sha256', strtolower(trim((string) $item->domain_name)))
+                : null,
         ]);
     }
 }
