@@ -9,7 +9,8 @@ class Sequence extends Model
     protected $fillable = 
     [
         'name',
-        'user_id'
+        'user_id',
+        'group_id',
     ];
 
     public function steps()

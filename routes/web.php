@@ -6,6 +6,7 @@ use App\Http\Controllers\HostingController;
 use App\Http\Controllers\DomainSearchController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\User\CampaignController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\ServiceController;
@@ -73,6 +74,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/settings', [ProfileController::class, 'edit'])->name('settings.index');
     Route::get('/my-services', [ServiceController::class, 'index'])->name('my-services.index');
     Route::get('/hosting', [HostingController::class, 'index'])->name('hosting.index');
     Route::post('/hosting/packages/{hostingPackage}/order', [HostingController::class, 'order'])->name('hosting.order');
@@ -103,7 +108,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('groups', ContactGroupController::class);
     Route::get('/track/open/{uuid}', [TrackingController::class, 'open'])->name('track.open');
     Route::get('/track/click/{id}', [TrackingController::class, 'click'])->name('track.click');
-    Route::get('/settings', fn () => view('settings.index'))->name('settings.index');
 });
 
 require __DIR__.'/auth.php';

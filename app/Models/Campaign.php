@@ -18,6 +18,7 @@ class Campaign extends Model
         'user_id',
         'name',
         'type',
+        'format',
         'sender_email',
         'status',
         'smtp_id',

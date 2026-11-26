@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+@php($isAdminPage = request()->is('admin', 'admin/*'))
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', request()->routeIs('admin.*') ? 'Drypp Admin' : 'Drypp Workspace') · Drypp</title>
+    <title>@yield('title', $isAdminPage ? 'Drypp Admin' : 'Drypp Workspace') · Drypp</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
     <style>
@@ -663,9 +664,9 @@
     </style>
 </head>
 
-<body class="{{ request()->routeIs('admin.*') ? 'admin-body' : 'customer-body' }}">
+<body class="{{ $isAdminPage ? 'admin-body' : 'customer-body' }}">
     <div class="admin-frame">
-        @if (request()->routeIs('admin.*'))
+        @if ($isAdminPage)
             @include('partials.sidebar')
         @elseif (auth()->check())
             @include('partials.customer-sidebar')
@@ -680,7 +681,7 @@
                         aria-label="Open navigation" aria-expanded="false">☰</button>
                     <div>
                         <div class="admin-kicker">Drypp /
-                            {{ request()->routeIs('admin.*') ? 'Administration' : (auth()->check() ? 'Customer workspace' : 'Marketplace') }}
+                            {{ $isAdminPage ? 'Administration' : (auth()->check() ? 'Customer workspace' : 'Marketplace') }}
                         </div>
                         <div class="admin-top-title">@yield('title', 'Dashboard')</div>
                     </div>

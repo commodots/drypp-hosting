@@ -35,7 +35,7 @@ class MarketplaceCartTest extends TestCase
 
         $package = HostingPackage::create([
             'name' => 'Standard',
-            'slug' => 'standard-hosting',
+            'slug' => 'standard-hosting-cart-test',
             'description' => 'Standard hosting',
             'price_ngn' => 45000,
             'price_usd' => 30,
@@ -123,7 +123,7 @@ class MarketplaceCartTest extends TestCase
         ]);
         $package = HostingPackage::create([
             'name' => 'Standard',
-            'slug' => 'standard-hosting',
+            'slug' => 'standard-hosting-removal-test',
             'price_ngn' => 45000,
             'price_usd' => 30,
             'billing_cycle' => 'yearly',

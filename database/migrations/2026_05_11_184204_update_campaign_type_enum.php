@@ -12,7 +12,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Update the enum to include marketing and transactional types
+        if (DB::getDriverName() === 'sqlite') {
+            Schema::table('campaigns', function (Blueprint $table) {
+                $table->string('type')->change();
+            });
+
+            return;
+        }
+
         DB::statement("ALTER TABLE campaigns MODIFY COLUMN type ENUM('cold', 'bulk', 'marketing', 'transactional') NOT NULL");
     }
 
@@ -21,7 +28,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revert back to original enum values
+        if (DB::getDriverName() === 'sqlite') {
+            Schema::table('campaigns', function (Blueprint $table) {
+                $table->enum('type', ['cold', 'bulk'])->change();
+            });
+
+            return;
+        }
+
         DB::statement("ALTER TABLE campaigns MODIFY COLUMN type ENUM('cold', 'bulk') NOT NULL");
     }
 };

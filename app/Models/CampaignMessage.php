@@ -7,7 +7,16 @@ use Illuminate\Support\Str;
 
 class CampaignMessage extends Model
 {
-    protected $fillable = ['campaign_id', 'email', 'status', 'message_uuid', 'smtp_server_id'];
+    protected $fillable = [
+        'campaign_id',
+        'email',
+        'status',
+        'message_uuid',
+        'smtp_server_id',
+        'sent_at',
+        'opened_at',
+        'clicked_at',
+    ];
 
     public function campaign()
     {

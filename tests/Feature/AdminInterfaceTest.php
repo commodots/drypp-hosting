@@ -64,7 +64,7 @@ class AdminInterfaceTest extends TestCase
         $customer = User::factory()->create();
         $package = HostingPackage::create([
             'name' => 'Standard',
-            'slug' => 'standard-hosting',
+            'slug' => 'standard-hosting-admin-paid-test',
             'price_ngn' => 0,
             'price_usd' => 30,
             'billing_cycle' => 'yearly',
@@ -116,7 +116,7 @@ class AdminInterfaceTest extends TestCase
         $customer = User::factory()->create();
         $package = HostingPackage::create([
             'name' => 'Standard',
-            'slug' => 'standard-hosting',
+            'slug' => 'standard-hosting-admin-unpaid-test',
             'price_ngn' => 0,
             'price_usd' => 30,
         ]);

@@ -224,6 +224,7 @@ class CampaignController extends Controller
         // Save everything to DB, including the new rules
         $campaign = Auth::user()->campaigns()->create([
             'name' => $request->name,
+            'format' => $request->format,
             'status' => $status,
             'sender_email' => $request->sender_email,
             'type' => $request->type ?? 'marketing',
@@ -301,6 +302,7 @@ class CampaignController extends Controller
 
         $campaign->update([
             'name' => $request->name,
+            'format' => $request->format,
             'sender_email' => $request->sender_email,
             'recipient_type' => $request->recipient_type,
             'group_id' => $request->group_id,
