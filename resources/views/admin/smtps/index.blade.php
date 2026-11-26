@@ -88,9 +88,9 @@
                     <td class="p-4">{{ $server->is_transactional ? 'Yes' : 'No' }}</td>
                     <td class="p-4">{{ $server->warmup_enabled ? 'Yes' : 'No' }}</td>
                     <td class="p-4 text-right">
-                        <form action="{{ route('admin.smtps.destroy', $server) }}" method="POST">
+                        <form action="{{ route('admin.smtps.destroy', $server) }}" method="POST" onsubmit="return confirm('Remove this SMTP server? Existing campaigns using it may be affected.')">
                             @csrf @method('DELETE')
-                            <button class="text-red-600 text-xs hover:underline">Remove</button>
+                            <button type="submit" class="text-red-600 text-xs hover:underline">Remove</button>
                         </form>
                     </td>
                 </tr>

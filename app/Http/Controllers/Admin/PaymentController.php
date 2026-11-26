@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Package;
-use App\Models\Subscription;
+use App\Models\ServiceOrder;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -16,7 +16,8 @@ class PaymentController extends Controller
             // Load users with their subscription and the package inside it
             'users' => User::where('role', 'user')->with('subscription.package')->paginate(10),
             'packages' => Package::all(),
-            'gatewayStatus' => 'Active', // Simulated payment gateway status 
+            'gatewayStatus' => config('services.paystack.secret_key') ? 'Configured' : 'Not configured',
+            'serviceOrders' => ServiceOrder::with('user')->latest()->paginate(15, ['*'], 'orders_page'),
         ]);
     }
 
