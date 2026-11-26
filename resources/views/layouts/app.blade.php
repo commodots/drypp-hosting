@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Drypp Admin') · Drypp</title>
+    <title>@yield('title', request()->routeIs('admin.*') ? 'Drypp Admin' : 'Drypp Workspace') · Drypp</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
     <style>
@@ -20,7 +20,8 @@
             --admin-bg: #f3f6fc
         }
 
-        body.admin-body {
+        body.admin-body,
+        body.customer-body {
             margin: 0;
             background: var(--admin-bg);
             color: var(--admin-ink);
@@ -50,6 +51,161 @@
 
         .admin-sidebar {
             overflow-y: auto
+        }
+
+        .customer-sidebar {
+            width: 258px;
+            flex: 0 0 258px;
+            min-height: 100vh;
+            background: linear-gradient(180deg, #10213e 0%, #0b1930 100%);
+            color: #dce6fb;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 60;
+            box-shadow: 12px 0 32px rgba(12, 23, 48, .08)
+        }
+
+        .customer-brand {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 3px 10px 24px;
+            color: #fff;
+            font-size: 23px;
+            font-weight: 800;
+            letter-spacing: -.7px
+        }
+
+        .customer-brand-mark {
+            height: 36px;
+            width: 36px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, #4169f5, #48c9dc);
+            color: white;
+            font-size: 18px
+        }
+
+        .customer-brand small {
+            margin-left: auto;
+            color: #8edbe8;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase
+        }
+
+        .customer-nav-label {
+            padding: 14px 12px 8px;
+            color: #8ca2c5;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: .13em;
+            text-transform: uppercase
+        }
+
+        .customer-nav {
+            display: grid;
+            gap: 5px
+        }
+
+        .customer-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 12px;
+            border-radius: 11px;
+            color: #c5d1e8;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background .18s, color .18s, transform .18s
+        }
+
+        .customer-nav a:hover {
+            background: #ffffff12;
+            color: #fff;
+            transform: translateX(2px)
+        }
+
+        .customer-nav a.active {
+            background: linear-gradient(100deg, #1677ef 0%, #118baf 100%);
+            color: #fff;
+            box-shadow: 0 8px 20px #1677ef44
+        }
+
+        .customer-nav-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-grid;
+            place-items: center;
+            color: inherit;
+            opacity: .95;
+            font-size: 15px
+        }
+
+        .customer-sidebar-footer {
+            margin-top: auto;
+            padding: 16px 8px 4px;
+            border-top: 1px solid #ffffff18
+        }
+
+        .customer-account {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 4px 12px;
+            color: #dce6fb;
+            font-size: 11px
+        }
+
+        .customer-account strong,
+        .customer-account small {
+            display: block;
+            max-width: 175px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        .customer-account small {
+            margin-top: 3px;
+            color: #91a2c0;
+            font-size: 10px
+        }
+
+        .customer-avatar {
+            width: 32px;
+            height: 32px;
+            flex: 0 0 32px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: #1b3d68;
+            color: #9de3ed;
+            font-weight: 800
+        }
+
+        .customer-logout {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: #c5d1e8;
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+            padding: 11px 12px;
+            border-radius: 11px
+        }
+
+        .customer-logout:hover {
+            background: #ef44441a;
+            color: #fecaca
         }
 
         .admin-brand {
@@ -454,7 +610,21 @@
                 height: 100dvh
             }
 
+            .customer-sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                transform: translateX(-105%);
+                transition: transform .22s ease;
+                width: 270px;
+                height: 100dvh
+            }
+
             .admin-sidebar.is-open {
+                transform: translateX(0)
+            }
+
+            .customer-sidebar.is-open {
                 transform: translateX(0)
             }
 
@@ -493,9 +663,13 @@
     </style>
 </head>
 
-<body class="admin-body">
+<body class="{{ request()->routeIs('admin.*') ? 'admin-body' : 'customer-body' }}">
     <div class="admin-frame">
-        @include('partials.sidebar')
+        @if (request()->routeIs('admin.*'))
+            @include('partials.sidebar')
+        @else
+            @include('partials.customer-sidebar')
+        @endif
         <div class="admin-overlay" id="adminSidebarOverlay"></div>
         <div class="admin-main-wrap">
             <header class="admin-topbar">
@@ -503,7 +677,8 @@
                     <button type="button" class="admin-mobile-toggle" id="adminSidebarToggle"
                         aria-label="Open navigation" aria-expanded="false">☰</button>
                     <div>
-                        <div class="admin-kicker">Drypp / Administration</div>
+                        <div class="admin-kicker">Drypp /
+                            {{ request()->routeIs('admin.*') ? 'Administration' : 'Customer workspace' }}</div>
                         <div class="admin-top-title">@yield('title', 'Dashboard')</div>
                     </div>
                 </div>

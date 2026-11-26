@@ -38,8 +38,23 @@ class AdminInterfaceTest extends TestCase
                 ->get(route($page))
                 ->assertOk()
                 ->assertSee('id="sidebar"', false)
-                ->assertSee('class="admin-sidebar"', false);
+                ->assertSee('class="admin-sidebar"', false)
+                ->assertSee('aria-label="Admin navigation"', false)
+                ->assertDontSee('aria-label="Customer navigation"', false);
         }
+    }
+
+    public function test_customer_pages_show_customer_navigation_instead_of_admin_navigation(): void
+    {
+        $customer = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($customer)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('aria-label="Customer navigation"', false)
+            ->assertSee('Email campaigns')
+            ->assertSee('My Services')
+            ->assertDontSee('aria-label="Admin navigation"', false);
     }
 
     public function test_admin_can_retry_failed_provisioning_for_a_paid_order(): void
