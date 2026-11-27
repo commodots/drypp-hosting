@@ -37,7 +37,9 @@ class MarketingFlowTest extends TestCase
             'name' => 'Test Campaign',
             'sender_email' => 'sender@test.com',
             'status' => 'draft',
-            'type' => 'bulk'
+            'type' => 'bulk',
+            'format' => 'html',
+            'recipient_type' => 'all',
         ]);
 
         $campaign->emailContent()->create([
@@ -56,12 +58,12 @@ class MarketingFlowTest extends TestCase
         ]);
 
         // 3. Test Open Tracking
-        $this->get(route('track.open', $message->id));
+        $this->get(route('track.open', $message->message_uuid));
         $this->assertNotNull($message->fresh()->opened_at);
         $this->assertEquals(1, $campaign->fresh()->opens);
 
         // 4. Test Click Tracking
-        $this->get(route('track.click', $message->id) . '?redirect=https://google.com');
+        $this->get(route('track.click', $message->message_uuid) . '?redirect=https://google.com');
         $this->assertNotNull($message->fresh()->clicked_at);
         $this->assertEquals(1, $campaign->fresh()->clicks);
     }
@@ -75,7 +77,14 @@ class MarketingFlowTest extends TestCase
             'status' => 'active'
         ]);
 
-        $campaign = Campaign::create(['user_id' => $this->user->id, 'name' => 'Test']);
+        $campaign = Campaign::create([
+            'user_id' => $this->user->id,
+            'name' => 'Test',
+            'sender_email' => 'sender@test.com',
+            'type' => 'cold',
+            'format' => 'text',
+            'recipient_type' => 'all',
+        ]);
         CampaignMessage::create([
             'campaign_id' => $campaign->id,
             'email' => $contact->email,

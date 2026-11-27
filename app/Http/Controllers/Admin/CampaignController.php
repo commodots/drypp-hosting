@@ -29,9 +29,8 @@ class CampaignController extends Controller
 
     public function assignSmtp(Request $request, Campaign $campaign)
     {
-        // ALLOW assignment if it is queued OR paused
-        if (!in_array($campaign->status, ['queued', 'paused'])) {
-            return back()->withErrors(['msg' => 'Can only assign SMTP to queued or paused campaigns.']);
+        if (!in_array($campaign->status, ['queued', 'paused', 'sending'], true)) {
+            return back()->withErrors(['msg' => 'Can only assign SMTP to queued, paused, or sending campaigns.']);
         }
 
         $request->validate(['smtp_id' => 'required|exists:smtp_servers,id']);

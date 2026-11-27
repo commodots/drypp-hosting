@@ -18,10 +18,17 @@ class AdminSmtpTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.smtps.store'), [
             'name' => 'Mailgun Main',
+            'type' => 'smtp',
             'host' => 'smtp.mailgun.org',
+            'port' => 587,
+            'username' => 'test-user',
+            'password' => 'test-password',
+            'encryption' => 'tls',
             'daily_limit' => 1000,
         ]);
 
+        $response->assertSessionHasNoErrors();
+        $response->assertSessionHas('success', 'SMTP Server added successfully.');
         $this->assertDatabaseHas('smtp_servers', ['name' => 'Mailgun Main']);
     }
 

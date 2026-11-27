@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Services\CartService;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
@@ -20,7 +21,7 @@ class RegisteredUserController extends Controller
         return view('auth.register');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, CartService $carts): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -40,8 +41,11 @@ class RegisteredUserController extends Controller
         $user = User::create(['name' => $request->name, 'email' => $request->email, 'password' => Hash::make($request->password)]);
         event(new Registered($user));
         Auth::login($user);
+        $request->session()->regenerate();
+        $cart = $carts->mergeGuestCart($request, $user);
 
         if ($request->session()->has('drypp_pending_checkout')) return redirect()->route('checkout.start');
+        if ($cart->items->isNotEmpty()) return redirect()->route('cart.index');
         $packageId = $request->session()->pull('hosting_selected_package');
         if ($packageId) return redirect()->route('hosting.index', ['package' => $packageId]).'#plans';
         return redirect()->route('dashboard');

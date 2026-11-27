@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\CartService;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -17,12 +18,14 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login');
     }
 
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request, CartService $carts): RedirectResponse
     {
         $request->authenticate();
         $request->session()->regenerate();
+        $cart = $carts->mergeGuestCart($request, $request->user());
         if ($request->user()->role === 'admin') return redirect()->intended(route('admin.dashboard'));
         if ($request->session()->has('drypp_pending_checkout')) return redirect()->route('checkout.start');
+        if ($cart->items->isNotEmpty()) return redirect()->route('cart.index');
         $packageId = $request->session()->pull('hosting_selected_package');
         if ($packageId) return redirect()->route('hosting.index', ['package' => $packageId]).'#plans';
         return redirect()->intended(route('dashboard', absolute: false));

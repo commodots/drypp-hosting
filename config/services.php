@@ -6,6 +6,7 @@ return [
         'public_key' => env('PAYSTACK_PUBLIC_KEY'),
         // Restrict checkout to currencies enabled for this Paystack merchant account.
         'currencies' => array_values(array_filter(array_map('trim', explode(',', env('PAYSTACK_CURRENCIES', 'NGN,USD'))))),
+        'order_expiry_minutes' => env('CHECKOUT_ORDER_EXPIRY_MINUTES', 30),
     ],
     'porkbun' => [
         'api_key' => env('PORKBUN_API_KEY'),
