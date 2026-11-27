@@ -7,7 +7,6 @@ use App\Models\ServiceOrder;
 use App\Services\CartService;
 use App\Services\ServiceOrderExpiryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class CheckoutController extends Controller
@@ -45,7 +44,12 @@ class CheckoutController extends Controller
         return view('checkout.show', compact('order'));
     }
 
-    public function pay(Request $request, ServiceOrder $order, ServiceOrderExpiryService $expiry)
+    public function pay(
+        Request $request,
+        ServiceOrder $order,
+        ServiceOrderExpiryService $expiry,
+        \App\Services\Payments\PaystackPaymentService $payments
+    )
     {
         abort_unless($order->user_id === auth()->id(), 403);
         if ($expiry->expireIfDue($order->id)) {
@@ -59,72 +63,15 @@ class CheckoutController extends Controller
             return back()->withErrors(['payment' => 'This order is not currently available for payment.']);
         }
 
-        $currency = strtoupper($order->currency ?: 'NGN');
-        $allowedCurrencies = array_map('strtoupper', config('services.paystack.currencies', ['NGN', 'USD']));
-        if (! in_array($currency, $allowedCurrencies, true)) {
-            return back()->withErrors(['payment' => 'This currency is not enabled for Paystack checkout.']);
-        }
-        $secret = config('services.paystack.secret_key');
-        if (! $secret) {
-            return back()->withErrors(['payment' => 'Paystack is not configured. Add PAYSTACK_SECRET_KEY to the server environment.']);
-        }
-
-        $majorAmount = (float) ($order->amount ?? 0);
-        if ($majorAmount <= 0) {
-            $majorAmount = (float) ($order->amount_ngn ?? 0);
-        }
-        $minorAmount = (int) round($majorAmount * 100);
-        if ($minorAmount < 1) {
-            return back()->withErrors(['payment' => 'This order has an invalid payment amount. Please contact support.']);
-        }
-
-        $existingAuthorizationUrl = data_get($order->metadata, 'payment.authorization_url');
-        if ($order->payment_reference && is_string($existingAuthorizationUrl)
-            && parse_url($existingAuthorizationUrl, PHP_URL_SCHEME) === 'https'
-            && parse_url($existingAuthorizationUrl, PHP_URL_HOST) === 'checkout.paystack.com') {
-            return redirect()->away($existingAuthorizationUrl);
-        }
-
-        $reference = $order->payment_reference ?: 'DRYPP-'.Str::upper(Str::random(20));
         try {
-            $response = \Illuminate\Support\Facades\Http::withToken($secret)->acceptJson()->timeout(20)->post('https://api.paystack.co/transaction/initialize', [
-                'email' => $request->user()->email,
-                'amount' => $minorAmount,
-                'currency' => $currency,
-                'reference' => $reference,
-                'callback_url' => route('checkout.callback'),
-                'metadata' => [
-                    'order_id' => $order->id,
-                    'order_number' => $order->order_number,
-                    'user_id' => $request->user()->id,
-                ],
-            ]);
-        } catch (\Throwable $exception) {
-            report($exception);
-            return back()->withErrors(['payment' => 'We could not connect to Paystack. Please try again shortly.']);
+            $authorizationUrl = $payments->initializeForOrder(
+                $order,
+                $request->user()->email,
+                route('checkout.callback')
+            );
+        } catch (RuntimeException $exception) {
+            return back()->withErrors(['payment' => $exception->getMessage()]);
         }
-
-        $authorizationUrl = (string) $response->json('data.authorization_url', '');
-        if (! $response->successful() || $response->json('status') !== true
-            || parse_url($authorizationUrl, PHP_URL_SCHEME) !== 'https'
-            || parse_url($authorizationUrl, PHP_URL_HOST) !== 'checkout.paystack.com') {
-            report(new RuntimeException('Paystack initialization failed for order '.$order->order_number.': '.(string) $response->json('message', 'No checkout URL.')));
-            return back()->withErrors(['payment' => 'Paystack could not start this payment. Confirm that '.$currency.' is enabled on your Paystack account, then try again.']);
-        }
-
-        $order->update([
-            'payment_reference' => $reference,
-            'metadata' => array_merge($order->metadata ?? [], [
-                'payment' => [
-                    'provider' => 'paystack',
-                    'currency' => $currency,
-                    'amount' => number_format($majorAmount, 2, '.', ''),
-                    'amount_minor' => $minorAmount,
-                    'authorization_url' => $authorizationUrl,
-                    'initialized_at' => now()->toIso8601String(),
-                ],
-            ]),
-        ]);
 
         return redirect()->away($authorizationUrl);
     }

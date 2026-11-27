@@ -95,4 +95,9 @@ class ServiceOrder extends Model
     {
         return $this->hasMany(ServiceOrderItem::class, 'service_order_id');
     }
+
+    public function paymentTransactions(): HasMany
+    {
+        return $this->hasMany(PaymentTransaction::class, 'service_order_id');
+    }
 }
